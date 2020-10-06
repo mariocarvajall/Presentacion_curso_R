@@ -1,0 +1,169 @@
+---
+title: "Estrés por calor en sistemas ganaderos: construyendo resiliencia"
+author: "Mario Carvajal"
+date: "10/2/2020"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+# Introducción
+
+## Estrés por calor, ¿Qué es?
+- Condiciones ambientales exceden la capacidad de los animales de termoregular 
+
+**¿Cómo se puede estimar?**
+$$
+ \begin{aligned}
+ THI = 0.92 * T° + 0.21 * RH + 12.1 * WS
+ \end{aligned}
+$$ 
+-THI 0-100 (>100 letal)
+
+```{r,out.width="200px", fig.align="center"}
+knitr::include_graphics("https://www.canr.msu.edu/contentAsset/image/1dc23ec9-7d30-45a5-9e0d-425486192bba/fileAsset/filter/Resize,Jpeg/resize_w/750/jpeg_q/80")
+```
+
+
+## Estrés por calor y cambio climático
+
+- Aumento de temperatura global
+- Zonas tropicales, países pobres
+- Estrés por calor  ¿impactos socioeconómicos?
+
+```{r,out.width="700px", fig.align="center"}
+knitr::include_graphics("https://i.ibb.co/VJVQWrt/FIG3-V2.jpg")
+```
+
+## 
+**Objetivo**
+
+_Analizar la interacción entre estrés por calor en animales con variables socioeconómicas propias de cada país_
+
+**Hipótesis**
+
+_Dado que una gran cantidad de países pobres se encuentran en zonas tropicales, los que experimentarán mayores aumentos de temperatura, se espera que exista una correlación positiva entre estrés por calor en animales y pobreza_
+
+```{r,out.width="300px", fig.align="center"}
+knitr::include_graphics("https://farm6.staticflickr.com/5290/5246606412_e07f5a010e.jpg")
+```
+
+# Metodología
+
+## Relación estadística entre estrés por calor y variables socioeconómicas
+
+```{r,out.width="700px", fig.align="center"}
+knitr::include_graphics("https://i.ibb.co/6n8phRR/ESQUEMA1.png")
+```
+
+
+## Análisis {.smaller}
+
+```{r, echo=FALSE, include=FALSE, warning=FALSE}
+library(MuMIn)
+library(mgcv)
+
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(dplyr)
+library(ggplot2)
+
+DATA <-read.csv("https://raw.githubusercontent.com/mariocarvajall/Presentacion_curso_R/main/Tarea_ppt_curso_R.csv")
+DATA$Cluster <- as.factor(DATA$Cluster)
+DATA$NumExp <- as.factor(DATA$NumExp)
+
+THI_MODEL <- gam(THI~ GDP + HDI + LPI + RD + Aexp + Cluster, family=gaussian(link = "identity"), data=DATA)
+summary(THI_MODEL);
+
+options(na.action = "na.fail") 
+Best_THI<-dredge(THI_MODEL, rank= AICc)
+
+THI_t<-subset(Best_THI, delta < 2); 
+THI_ta<-as.data.frame(THI_t)
+dd2<-THI_ta[,2:(which(colnames(THI_ta)=="df")-1) ]
+
+MoD<-c()
+for(g in 1:NROW(dd2)){
+  Line<-as.vector(dd2[g,]) 
+  xn<- which(is.na(Line))
+  if(NROW(xn)==0) {xn<-colnames(Line)} else {xn<-colnames(Line[-xn]) }
+  xn<- paste(xn, collapse= "+")
+  MoD<-c(MoD,xn)           }
+dd2<-cbind(MoD,THI_ta[,which(colnames(THI_ta)=="df"):which(colnames(THI_ta)=="weight")])
+
+
+if(NROW(THI_t)>1) {Coeff<-model.avg(THI_t)} else {Coeff<-model.avg(Best_THI) }
+sum.coef<- as.data.frame(summary(Coeff)$coefmat.subset)
+sum.coef<- round(sum.coef[-1,], 5); colnames(sum.coef)[ncol(sum.coef)]<-"pval"
+```
+
+```{r warning=FALSE, echo=TRUE, include=TRUE}
+
+DATA$Cluster <- as.factor(DATA$Cluster)
+DATA$NumExp <- as.factor(DATA$NumExp)
+
+THI_MODEL <- gam(THI~ GDP + HDI + LPI + RD + Aexp + Cluster, 
+             family=gaussian(link = "identity"), data=DATA)
+
+options(na.action = "na.fail")
+Best_THI<-dredge(THI_MODEL, rank= AICc)
+
+THI_t<-subset(Best_THI, delta < 2); 
+THI_ta<-as.data.frame(THI_t)
+```
+
+# Resultados 
+
+## Resultados {.smaller}
+```{r Tabla1, fig.cap= "Tabla 1", fig.align='center', warning=FALSE, echo=TRUE, include=TRUE}
+kable(dd2, caption = "Tres mejores modelos") %>% kable_styling(bootstrap_options = 
+                                                                  c("striped"))
+```
+
+## Resultados {.smaller}
+
+```{r Tabla2, fig.cap= "Tabla 1", fig.align='center', warning=FALSE, echo=TRUE, include=TRUE}
+kable(sum.coef, caption = "Coeficientes") %>% kable_styling(bootstrap_options = 
+                                                                  c("striped"))
+```
+
+## Resultados {.smaller}
+```{r warning=FALSE, echo=FALSE, include=TRUE}
+par(mfrow=c(2,2))
+ggplot(DATA, aes(x=THI, y=HDI))+
+  geom_point(shape = 21, aes(fill = as.factor(Cluster), size = NumExp))+
+  scale_fill_manual(values = c("firebrick3", "gold2", "dodgerblue3","chartreuse3"))+
+  geom_smooth(method=lm, colour= "black", size =1)+
+  theme_classic()
+```
+
+## Resultados {.smaller}
+```{r warning=FALSE, echo=FALSE, include=TRUE}
+ggplot(DATA, aes(x=TOE, y=HDI))+
+  geom_point(shape = 21,aes(fill = as.factor(Cluster),  size = NumExp))+
+  scale_fill_manual(values = c("firebrick3", "gold2", "dodgerblue3","chartreuse3"))+
+  geom_smooth(method=lm, colour= "black", size =1)+
+  theme_classic()
+```
+
+## Resultados {.smaller}
+```{r warning=FALSE, echo=FALSE, include=TRUE}
+ggplot(DATA, aes(x=THI, y=GDP))+
+  geom_point(shape = 21, aes(fill = as.factor(Cluster), size = NumExp))+
+  scale_fill_manual(values = c("firebrick3", "gold2", "dodgerblue3","chartreuse3"))+
+  geom_smooth(method=lm, colour= "black", size =1)+
+  theme_classic()
+```
+
+## Conclusiones
+
+- Más animales estresados en países con bajo GDP per cápita
+- Mayor cantidad de animales expuestos en países con bajo desarrollo humano
+
+- ¿Países pobres podrán asumir el costo de implementar medidas efectivas?
+-  Cambio climático: "Rich get richer, poor get poorer"
+
+# Fin
+
