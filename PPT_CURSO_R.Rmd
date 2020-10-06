@@ -132,29 +132,29 @@ kable(sum.coef, caption = "Coeficientes") %>% kable_styling(bootstrap_options =
 ## Resultados {.smaller}
 ```{r warning=FALSE, echo=FALSE, include=TRUE}
 par(mfrow=c(2,2))
-ggplot(DATA, aes(x=THI, y=HDI))+
+suppressMessages(ggplot(DATA, aes(x=THI, y=HDI))+
   geom_point(shape = 21, aes(fill = as.factor(Cluster), size = NumExp))+
   scale_fill_manual(values = c("firebrick3", "gold2", "dodgerblue3","chartreuse3"))+
   geom_smooth(method=lm, colour= "black", size =1)+
-  theme_classic()
+  theme_classic())
 ```
 
 ## Resultados {.smaller}
 ```{r warning=FALSE, echo=FALSE, include=TRUE}
-ggplot(DATA, aes(x=TOE, y=HDI))+
+suppressMessages(ggplot(DATA, aes(x=TOE, y=HDI))+
   geom_point(shape = 21,aes(fill = as.factor(Cluster),  size = NumExp))+
   scale_fill_manual(values = c("firebrick3", "gold2", "dodgerblue3","chartreuse3"))+
   geom_smooth(method=lm, colour= "black", size =1)+
-  theme_classic()
+  theme_classic())
 ```
 
 ## Resultados {.smaller}
 ```{r warning=FALSE, echo=FALSE, include=TRUE}
-ggplot(DATA, aes(x=THI, y=GDP))+
+suppressMessages(ggplot(DATA, aes(x=THI, y=GDP))+
   geom_point(shape = 21, aes(fill = as.factor(Cluster), size = NumExp))+
   scale_fill_manual(values = c("firebrick3", "gold2", "dodgerblue3","chartreuse3"))+
   geom_smooth(method=lm, colour= "black", size =1)+
-  theme_classic()
+  theme_classic())
 ```
 
 ## Conclusiones
