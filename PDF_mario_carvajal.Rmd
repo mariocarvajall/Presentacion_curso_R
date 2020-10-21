@@ -1,0 +1,148 @@
+---
+title: "Cambio climático y estrés por calor en sistemas ganaderos"
+author: "Mario Carvajal León"
+date: "10/21/2020"
+output: bookdown::pdf_document2
+bibliography: Referencias.bib
+fig_caption: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.pos = 'H')
+library(tidyverse)
+library(MuMIn)
+library(mgcv)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(ggpubr)
+library(rticles)
+```
+
+# Introduccion
+
+## Estres por calor, ¿Que es?
+Se define por estres por calor a la respuesta fisiologica generada cuando las condiciones ambientales exceden la capacidad de los seres vivos de termoregular [@sejian_bhatta_gaughan_dunshea_lacetera_2018].
+El estres por calor genera perdidas de mas de 2 billones de dolares al año en paises como Estados Unidos [@STPIERRE2003E52], por lo que es un serio factor detrimental sobre la produccion de alimentos derivados de animales [@SILANIKOVE20001]. 
+
+**¿Como se puede estimar?**
+Existen diversas maneras, siendo una de ellas la aplicacion de indices de estres por calor. Los indices nos muestran la combinacion de ciertas variables ambientales como temperatura y humedad que son dañinas para los animales. Un ejemplo es el THI (Temperature-Humidity Index) el cual a sido ampliamente usado para el fin de medir el estres por calor en rumiantes en todo el mundo.
+$$
+ \begin{aligned}
+ THI = 0.92 * T + 0.21 * RH + 12.1 * WS
+ \end{aligned}
+$$
+Siendo T temperatura en grados celcius, RH humedad relativa (%) y WS velocidad del viento (m/s). El rango del THI va entre 0-100, siendo THI > 90 potencialmente letal.
+
+## Estres por calor y cambio climatico
+
+El aumento de la temperatura global y la influencia del cambio climatico a profundizado el problema del estres por calor, siendo cada año mas preocupante tanto para la produccion de alimentos derivados de animales, como para su propio bienestar. 
+Este problema es particularmente importante en zonas tropicales, donde paises pobres tienen muchas veces dificultades para lidiar con el alto costo de medidas de mitigacion (ventiladores, aspersores, sistemas de climatizacion).
+Ante esto surge la pregunta, ¿Que paises y zonas son mas resilientes?, ¿Que variables socioeconomicas nos ayudan a identificar de mejor manera los paises vulnerables?.
+
+# **Objetivo**
+
+_Analizar la interaccion entre estres por calor en animales con variables socioeconomicas propias de cada pais, con el fin de entender de mejor manera su nivel de vulnerabilidad _
+
+# **Hipotesis**
+
+_Dado que una gran cantidad de paises pobres se encuentran en zonas tropicales, zonas que experimentaran mayores magnitudes de cambio de temperatura y humedad, se espera que exista una correlacion positiva entre estres por calor en animales y pobreza_
+
+# Metodologia
+
+## Relacion estadistica entre estres por calor y variables socioeconomicas {.smaller}
+Mediante analisis estadisticos se busca explorar las relaciones entre variables de estres por calor e indicadores socioeconomicos a escala de pais. Se realizo un modelo lineal cuyas variables fueron previamente normalizadas mediante la función **log10(x)**. Posteriormente, se itero este proceso y se selecciono los mejores modelos acorde al criterio Akaike $$\begin{aligned}AICc < 2\end{aligned}$$
+
+## Código utilizado (GLM)
+
+```{r, echo=FALSE, include=FALSE, warning=FALSE}
+
+
+DATA <-read.csv("https://raw.githubusercontent.com/mariocarvajall/Presentacion_curso_R/main/Tarea_ppt_curso_R.csv")
+DATA$Cluster <- as.factor(DATA$Cluster)
+DATA$NumExp <- as.factor(DATA$NumExp)
+
+THI_MODEL <- glm(THI~ GDP + HDI + LPI + RD + Aexp + Cluster, family=gaussian(link = "identity"), data=DATA)
+summary(THI_MODEL);
+
+options(na.action = "na.fail") 
+Best_THI<-dredge(THI_MODEL, rank= AICc)
+
+THI_t<-subset(Best_THI, delta < 2); 
+THI_ta<-as.data.frame(THI_t)
+dd2<-THI_ta[,2:(which(colnames(THI_ta)=="df")-1) ]
+
+MoD<-c()
+for(g in 1:NROW(dd2)){
+  Line<-as.vector(dd2[g,]) 
+  xn<- which(is.na(Line))
+  if(NROW(xn)==0) {xn<-colnames(Line)} else {xn<-colnames(Line[-xn]) }
+  xn<- paste(xn, collapse= "+")
+  MoD<-c(MoD,xn)           }
+dd2<-cbind(MoD,THI_ta[,which(colnames(THI_ta)=="df"):which(colnames(THI_ta)=="weight")])
+
+
+if(NROW(THI_t)>1) {Coeff<-model.avg(THI_t)} else {Coeff<-model.avg(Best_THI) }
+sum.coef<- as.data.frame(summary(Coeff)$coefmat.subset)
+sum.coef<- round(sum.coef[-1,], 5); colnames(sum.coef)[ncol(sum.coef)]<-"pval"
+```
+
+```{r warning=FALSE, echo=TRUE, include=TRUE}
+
+DATA$Cluster <- as.factor(DATA$Cluster)
+DATA$NumExp <- as.factor(DATA$NumExp)
+
+THI_MODEL <- gam(THI~ GDP + HDI + LPI + RD + Aexp + Cluster, 
+             family=gaussian(link = "identity"), data=DATA)
+
+options(na.action = "na.fail")
+Best_THI<-dredge(THI_MODEL, rank= AICc)
+
+THI_t<-subset(Best_THI, delta < 2); 
+THI_ta<-as.data.frame(THI_t)
+```
+
+# Resultados {.smaller}
+
+Se encontró una relación estadística negativa entre las variables de estrés por calor y los indicadores socioeconómicos (Tabla\@ref(tab:Tabla2)). Las variables GDP (producto interno bruto) y HDI (indice de desarrollo humano) mostraron valores negativos respecto al indice de estres (THI). Lo anterior evidencia la tendencia de mayor estrés por calor en animales de países con menor capacidad económica y menor desarrollo humano. 
+
+```{r Tabla1, echo=F,warning=F,include=T}
+suppressMessages(dd2 %>% kable(caption = "Tres mejores modelos") %>% 
+  kable_styling(bootstrap_options = c("stripped","hover"),latex_options = "HOLD_position"))
+```
+
+```{r Tabla2, echo=F,warning=F,include=T}
+suppressMessages(sum.coef%>% kable(caption = "Coeficientes GLM") %>% 
+  kable_styling(bootstrap_options = c("stripped","hover"),latex_options = "HOLD_position"))
+```
+
+```{r Fig1, warning=FALSE, echo=FALSE, include=TRUE, fig.align="center", fig.cap="Relacion estadistica entre indice de desarrollo humano (HDI) e indice de estres por calor (THI)"}
+par(mfrow=c(2,2))
+suppressMessages(ggplot(DATA, aes(x=THI, y=HDI))+
+  geom_point(shape = 21, aes(fill = as.factor(Cluster), size = NumExp))+
+  scale_fill_manual(values = c("firebrick3", "gold2", "dodgerblue3","chartreuse3"))+
+  geom_smooth(method=lm, colour= "black", size =1)+
+  theme_classic())
+```
+
+Como se observa en la Figura\@ref(fig:Fig1), la relación entre el estres por calor (THI) y desarrollo humano (HDI) posee una pendiente negativa. Círculos representan los países analizados. Países vulnerables segun clasificación FAO (color rojo) que poseen a su vez grandes cantidades de animales (tamaño del círculo), evidencian mayor THI y menor HDI. 
+
+```{r Fig2, warning=FALSE, echo=FALSE, include=TRUE, fig.align="center", fig.cap="Relacion estadistica entre producto interno bruto per capita (GDP) e indice de estres por calor (THI)"}
+suppressMessages(ggplot(DATA, aes(x=THI, y=GDP))+
+  geom_point(shape = 21, aes(fill = as.factor(Cluster), size = NumExp))+
+  scale_fill_manual(values = c("firebrick3", "gold2", "dodgerblue3","chartreuse3"))+
+  geom_smooth(method=lm, colour= "black", size =1)+
+  theme_classic())
+```
+
+Respecto a la capacidad económica de cada país de adoptar medidas de mitigación, es posible evidenciar en la Figura \@ref(fig:Fig2) mayor estrés en países con bajo
+GDP, lo que sugiere que en muchos casos se requerirá de ayuda de la comunidad internacional para hacer frente a este problema. 
+
+# Conclusiones
+
+Se desprende del análisis que existen más animales estresados en paises con bajo GDP per capita, y en segundo lugar existe una mayor cantidad de animales expuestos en paises con bajo desarrollo humano. Ante esto, surge la inquietud si países pobres podrán asumir el costo de implementar medidas efectivas. De igual manera es posible identificar el patrón "Rich get richer, poor get poorer" del cambio climático, con implicancias tanto físicas como sociales.
+
+# Referencias
+
